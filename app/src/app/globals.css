@@ -1,0 +1,223 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Cyber-Doll Fintech — Design Tokens ─────────────────────────────────── */
+@theme inline {
+  /* Core semantic (shadcn compat) */
+  --color-background:     var(--pm-bg);
+  --color-foreground:     var(--pm-on-surface);
+  --color-card:           var(--pm-surface-container);
+  --color-card-foreground:var(--pm-on-surface);
+  --color-popover:        var(--pm-surface-container-low);
+  --color-popover-foreground: var(--pm-on-surface);
+  --color-primary:        var(--pm-primary);
+  --color-primary-foreground: var(--pm-on-primary);
+  --color-secondary:      var(--pm-secondary);
+  --color-secondary-foreground: var(--pm-on-secondary);
+  --color-muted:          var(--pm-surface-container-high);
+  --color-muted-foreground: var(--pm-on-surface-variant);
+  --color-accent:         var(--pm-primary-container);
+  --color-accent-foreground: var(--pm-on-primary-container);
+  --color-destructive:    var(--pm-error);
+  --color-border:         var(--pm-outline-variant);
+  --color-input:          var(--pm-surface-container-high);
+  --color-ring:           var(--pm-primary);
+
+  /* Charts */
+  --color-chart-1: #FF4FA3;
+  --color-chart-2: #ffb0cc;
+  --color-chart-3: #f2b5d0;
+  --color-chart-4: #b20150;
+  --color-chart-5: #66002b;
+
+  /* Border radius — Pill-first shape language */
+  --radius-sm:  0.5rem;
+  --radius:     1rem;
+  --radius-md:  1.5rem;
+  --radius-lg:  2rem;
+  --radius-xl:  3rem;
+  --radius-2xl: 9999px;
+
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* Spacing — 8px scale */
+  --spacing-base: 0.5rem;        /* 8px  */
+  --spacing-gap:  1rem;          /* 16px */
+  --spacing-pad:  1.5rem;        /* 24px */
+  --spacing-section: 2rem;       /* 32px */
+}
+
+/* ─── PinkMoney Custom Properties ────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --pm-bg:                        #1A000D;
+  --pm-surface:                   #280619;
+  --pm-surface-dim:               #280619;
+  --pm-surface-bright:            #552c3f;
+  --pm-surface-container-lowest:  #220313;
+  --pm-surface-container-low:     #320f21;
+  --pm-surface-container:         #371325;
+  --pm-surface-container-high:    #441d30;
+  --pm-surface-container-highest: #50283b;
+  --pm-surface-variant:           #50283b;
+
+  /* On-surfaces */
+  --pm-on-surface:         #ffd8e6;
+  --pm-on-surface-variant: #dfbec8;
+  --pm-inverse-surface:    #ffd8e6;
+  --pm-inverse-on-surface: #4b2336;
+
+  /* Outline */
+  --pm-outline:         #a78992;
+  --pm-outline-variant: #584048;
+
+  /* Primary — Neon Pink */
+  --pm-primary:           #ffb0cc;
+  --pm-on-primary:        #640038;
+  --pm-primary-container: #FF4FA3;
+  --pm-on-primary-container: #5d0034;
+  --pm-inverse-primary:   #b7046c;
+  --pm-primary-fixed:     #ffd9e4;
+  --pm-primary-fixed-dim: #ffb0cc;
+  --pm-on-primary-fixed:  #3e0021;
+  --pm-on-primary-fixed-variant: #8d0051;
+  --pm-surface-tint:      #ffb0cc;
+
+  /* Secondary — Dark Pink */
+  --pm-secondary:           #ffb1c2;
+  --pm-on-secondary:        #66002b;
+  --pm-secondary-container: #b20150;
+  --pm-on-secondary-container: #ffc1cd;
+  --pm-secondary-fixed:     #ffd9df;
+  --pm-secondary-fixed-dim: #ffb1c2;
+  --pm-on-secondary-fixed:  #3f0018;
+  --pm-on-secondary-fixed-variant: #8f003f;
+
+  /* Tertiary — Light Pink */
+  --pm-tertiary:            #f2b5d0;
+  --pm-on-tertiary:         #4c2338;
+  --pm-tertiary-container:  #bb849d;
+  --pm-on-tertiary-container: #471f34;
+  --pm-tertiary-fixed:      #ffd8e7;
+  --pm-tertiary-fixed-dim:  #f2b5d0;
+  --pm-on-tertiary-fixed:   #330e22;
+  --pm-on-tertiary-fixed-variant: #65394f;
+
+  /* Error */
+  --pm-error:             #ffb4ab;
+  --pm-on-error:          #690005;
+  --pm-error-container:   #93000a;
+  --pm-on-error-container:#ffdad6;
+}
+
+/* ─── Global Resets & Base ─────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--pm-bg);
+    color: var(--pm-on-surface);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--pm-outline-variant); border-radius: 9999px; }
+}
+
+/* ─── PinkMoney Utilities ───────────────────────────────────────────────────── */
+@layer utilities {
+  /* Background gradient */
+  .pm-bg-gradient {
+    background: linear-gradient(160deg, #2B0A1B 0%, #1A000D 60%, #220313 100%);
+  }
+
+  /* Glass card */
+  .pm-glass {
+    background: rgba(55, 19, 37, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(242, 181, 208, 0.15);
+  }
+
+  .pm-glass-bright {
+    background: rgba(80, 40, 59, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 176, 204, 0.25);
+  }
+
+  /* Glows */
+  .pm-glow-primary {
+    box-shadow: 0 0 20px rgba(255, 79, 163, 0.4), 0 0 40px rgba(255, 79, 163, 0.15);
+  }
+
+  .pm-glow-text {
+    filter: drop-shadow(0 0 8px rgba(255, 79, 163, 0.6));
+  }
+
+  /* Stars background (Y2K motif) */
+  .pm-stars {
+    background-image:
+      radial-gradient(1px 1px at 15% 12%, rgba(255,175,210,0.6) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 72% 8%, rgba(255,79,163,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 38% 25%, rgba(255,193,220,0.4) 0%, transparent 100%),
+      radial-gradient(2px 2px at 88% 20%, rgba(255,79,163,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 5% 45%, rgba(255,175,210,0.5) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 60% 35%, rgba(255,79,163,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 93% 55%, rgba(255,193,220,0.6) 0%, transparent 100%),
+      radial-gradient(2px 2px at 25% 70%, rgba(255,79,163,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 48% 80%, rgba(255,175,210,0.5) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 80% 75%, rgba(255,79,163,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 90%, rgba(255,193,220,0.5) 0%, transparent 100%),
+      radial-gradient(2px 2px at 55% 92%, rgba(255,79,163,0.3) 0%, transparent 100%);
+  }
+
+  /* Neon button glow pulse */
+  .pm-btn-primary {
+    background: #FF4FA3;
+    color: #fff;
+    box-shadow: 0 4px 24px rgba(255, 79, 163, 0.5);
+    transition: box-shadow 0.2s, transform 0.1s;
+  }
+  .pm-btn-primary:hover {
+    box-shadow: 0 6px 32px rgba(255, 79, 163, 0.7);
+    transform: translateY(-1px);
+  }
+  .pm-btn-primary:active {
+    transform: translateY(0);
+  }
+
+  /* Progress bar glow */
+  .pm-progress-fill {
+    background: linear-gradient(90deg, #b7046c, #FF4FA3);
+    box-shadow: 0 0 10px rgba(255, 79, 163, 0.6);
+  }
+
+  /* Numeric display */
+  .pm-numeric {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Mobile-first safe area */
+  .pm-safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
