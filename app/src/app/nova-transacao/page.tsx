@@ -24,9 +24,9 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 const PAYMENT_OPTS = [
-  { value: 'card' as const, label: 'Card', icon: CreditCard },
-  { value: 'pix'  as const, label: 'Pix',  icon: Smartphone },
-  { value: 'cash' as const, label: 'Cash', icon: Wallet     },
+  { value: 'card' as const, label: 'Card',  icon: CreditCard  },
+  { value: 'pix'  as const, label: 'Pix',   icon: Smartphone  },
+  { value: 'cash' as const, label: 'Cash',  icon: Wallet      },
 ]
 
 export default function NovaTransacaoPage() {
@@ -34,8 +34,8 @@ export default function NovaTransacaoPage() {
   const [type, setType]           = useState<'expense' | 'income'>('expense')
   const [rawAmount, setRawAmount] = useState('')
 
-  const { data: categories = [] }  = useCategories()
-  const { mutateAsync, isPending } = useCreateTransaction()
+  const { data: categories = [] }   = useCategories()
+  const { mutateAsync, isPending }  = useCreateTransaction()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -60,6 +60,15 @@ export default function NovaTransacaoPage() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   }
 
+  function formatDateLabel(dateStr: string): string {
+    const d = new Date(dateStr + 'T12:00:00')
+    return new Intl.DateTimeFormat('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(d)
+  }
+
   async function onSubmit(data: FormData) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -79,12 +88,17 @@ export default function NovaTransacaoPage() {
     router.push('/dashboard')
   }
 
-  return (
-    <div className="min-h-dvh pm-bg-gradient px-5 pt-6 pb-8 max-w-md mx-auto">
+  const dateWatch = watch('date')
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={() => router.back()} className="w-10 h-10 rounded-full pm-glass flex items-center justify-center">
+  return (
+    <div className="min-h-dvh pm-bg-gradient pb-10 max-w-md mx-auto">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-5 pt-6 mb-6">
+        <button
+          onClick={() => router.back()}
+          className="w-10 h-10 rounded-full pm-glass flex items-center justify-center"
+        >
           <ArrowLeft size={18} className="text-[var(--pm-on-surface)]" />
         </button>
         <h1 className="text-base font-bold text-[var(--pm-on-surface)]">Nova Transação</h1>
@@ -93,17 +107,19 @@ export default function NovaTransacaoPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="px-5 space-y-4">
 
-        {/* Toggle Gasto / Ganho */}
+        {/* ── Toggle Gasto / Ganho ── */}
         <div className="flex p-1 rounded-full bg-[var(--pm-surface-container-high)]">
           {(['expense', 'income'] as const).map(t => (
             <button
               key={t}
               type="button"
               onClick={() => setType(t)}
-              className={`flex-1 py-2.5 rounded-full text-sm font-bold transition-all ${
-                type === t ? 'pm-btn-primary' : 'text-[var(--pm-on-surface-variant)]'
+              className={`flex-1 py-3 rounded-full text-sm font-bold transition-all ${
+                type === t
+                  ? 'pm-btn-primary'
+                  : 'text-[var(--pm-on-surface-variant)]'
               }`}
             >
               {t === 'expense' ? 'Gasto' : 'Ganho'}
@@ -111,9 +127,11 @@ export default function NovaTransacaoPage() {
           ))}
         </div>
 
-        {/* Valor */}
+        {/* ── Valor ── */}
         <GlassCard className="p-6 text-center">
-          <p className="text-xs font-semibold tracking-widest text-[var(--pm-on-surface-variant)] uppercase mb-2">Quantia</p>
+          <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--pm-on-surface-variant)] uppercase mb-3">
+            Quantia
+          </p>
           <input
             type="tel"
             inputMode="numeric"
@@ -124,33 +142,21 @@ export default function NovaTransacaoPage() {
           <input type="hidden" {...register('amount')} />
         </GlassCard>
 
-        {/* Descrição */}
-        <GlassCard className="p-4">
-          <p className="text-xs font-semibold tracking-widest text-[var(--pm-on-surface-variant)] uppercase mb-2">Descrição</p>
-          <input
-            {...register('description')}
-            type="text"
-            placeholder="Ex: Sephora, Mercado, iFood..."
-            className="w-full bg-transparent text-sm text-[var(--pm-on-surface)] placeholder:text-[var(--pm-outline)] outline-none"
-          />
-          {errors.description && (
-            <p className="text-xs text-[var(--pm-error)] mt-1">{errors.description.message}</p>
-          )}
-        </GlassCard>
-
-        {/* Categoria */}
+        {/* ── Categoria ── */}
         {categories.length > 0 && (
-          <GlassCard className="p-4">
-            <p className="text-xs font-semibold tracking-widest text-[var(--pm-on-surface-variant)] uppercase mb-3">Categoria</p>
-            <div className="flex flex-wrap gap-2">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--pm-on-surface-variant)] uppercase mb-2 px-1">
+              Categoria
+            </p>
+            <div className="flex gap-2 flex-wrap">
               {categories.map(cat => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setValue('category_id', cat.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all ${
                     selectedCategory === cat.id
-                      ? 'bg-[var(--pm-primary-container)] text-white'
+                      ? 'bg-[var(--pm-primary-container)] text-white shadow-[0_4px_12px_rgba(255,79,163,0.4)]'
                       : 'bg-[var(--pm-surface-container-high)] text-[var(--pm-on-surface-variant)]'
                   }`}
                 >
@@ -159,45 +165,76 @@ export default function NovaTransacaoPage() {
                 </button>
               ))}
             </div>
-          </GlassCard>
+          </div>
         )}
 
-        {/* Data */}
+        {/* ── Descrição ── */}
         <GlassCard className="p-4">
-          <p className="text-xs font-semibold tracking-widest text-[var(--pm-on-surface-variant)] uppercase mb-2">Data</p>
+          <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--pm-on-surface-variant)] uppercase mb-2">
+            Descrição
+          </p>
           <input
-            {...register('date')}
-            type="date"
-            className="w-full bg-transparent text-sm text-[var(--pm-on-surface)] outline-none"
-            style={{ colorScheme: 'dark' }}
+            {...register('description')}
+            type="text"
+            placeholder="Ex: Sephora, iFood, Mercado..."
+            className="w-full bg-transparent text-sm text-[var(--pm-on-surface)] placeholder:text-[var(--pm-outline)] outline-none"
           />
+          {errors.description && (
+            <p className="text-xs text-[var(--pm-error)] mt-1">{errors.description.message}</p>
+          )}
         </GlassCard>
 
-        {/* Método de Pagamento */}
+        {/* ── Data ── */}
         <GlassCard className="p-4">
-          <p className="text-xs font-semibold tracking-widest text-[var(--pm-on-surface-variant)] uppercase mb-3">Método de Pagamento</p>
+          <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--pm-on-surface-variant)] uppercase mb-2">
+            Data
+          </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📅</span>
+              <span className="text-sm text-[var(--pm-on-surface)] capitalize">
+                {dateWatch ? formatDateLabel(dateWatch) : 'Hoje'}
+              </span>
+            </div>
+            <input
+              {...register('date')}
+              type="date"
+              className="absolute opacity-0 w-24 h-8 cursor-pointer"
+              style={{ colorScheme: 'dark' }}
+            />
+            <span className="text-[var(--pm-on-surface-variant)] text-sm">▾</span>
+          </div>
+        </GlassCard>
+
+        {/* ── Método de Pagamento ── */}
+        <div>
+          <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--pm-on-surface-variant)] uppercase mb-2 px-1">
+            Método de Pagamento
+          </p>
           <div className="flex gap-2">
             {PAYMENT_OPTS.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setValue('payment_method', value)}
-                className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                   selectedPayment === value
-                    ? 'bg-[var(--pm-primary-container)] text-white'
+                    ? 'bg-[var(--pm-primary-container)] text-white shadow-[0_4px_12px_rgba(255,79,163,0.35)]'
                     : 'bg-[var(--pm-surface-container-high)] text-[var(--pm-on-surface-variant)]'
                 }`}
               >
-                <Icon size={16} />
+                <Icon size={14} />
                 {label}
               </button>
             ))}
           </div>
-        </GlassCard>
+        </div>
 
-        {/* Notas */}
+        {/* ── Notas ── */}
         <GlassCard className="p-4">
-          <p className="text-xs font-semibold tracking-widest text-[var(--pm-on-surface-variant)] uppercase mb-2">Notas</p>
+          <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--pm-on-surface-variant)] uppercase mb-2">
+            Notas
+          </p>
           <textarea
             {...register('notes')}
             rows={2}
@@ -206,10 +243,11 @@ export default function NovaTransacaoPage() {
           />
         </GlassCard>
 
+        {/* ── Botão Salvar ── */}
         <button
           type="submit"
           disabled={isPending || !rawAmount}
-          className="w-full py-4 rounded-full pm-btn-primary font-bold text-base disabled:opacity-50"
+          className="w-full py-4 rounded-full pm-btn-primary font-bold text-base disabled:opacity-50 mt-2"
         >
           {isPending ? 'Salvando...' : 'Salvar Transação'}
         </button>
