@@ -4,10 +4,9 @@ export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import {
-  Search, Plus, TrendingUp, TrendingDown,
+  Search, TrendingUp, TrendingDown,
   X, Check, Trash2, Pencil, CreditCard, Wallet, Smartphone,
 } from 'lucide-react'
-import Link from 'next/link'
 import { GlassCard } from '@/components/pm/GlassCard'
 import {
   useTransactions,
@@ -205,9 +204,9 @@ export default function HistoricoPage() {
         <div className="text-center py-16 space-y-3">
           <p className="text-4xl">✨</p>
           <p className="text-[var(--pm-on-surface-variant)] text-sm">Nenhuma transação encontrada</p>
-          <Link href="/nova-transacao" className="inline-block text-sm text-[var(--pm-primary)] font-semibold">
-            Adicionar agora →
-          </Link>
+          <p className="text-xs text-[var(--pm-on-surface-variant)]">
+            Use o botão <span className="text-[var(--pm-primary)] font-semibold">+</span> na barra inferior para adicionar
+          </p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -257,8 +256,8 @@ export default function HistoricoPage() {
         </div>
       )}
 
-      {/* Espaço para sumário e FAB */}
-      <div className="h-24" />
+      {/* Espaço para sumário fixo */}
+      <div className="h-20" />
 
       {/* Sumário fixo */}
       <div className="fixed bottom-[72px] left-0 right-0 px-5 z-40 max-w-md mx-auto">
@@ -279,15 +278,6 @@ export default function HistoricoPage() {
           </div>
         </GlassCard>
       </div>
-
-      {/* FAB flutuante */}
-      <Link
-        href="/nova-transacao"
-        className="fixed bottom-[140px] right-5 w-14 h-14 rounded-full pm-btn-primary flex items-center justify-center z-50 shadow-[0_8px_24px_rgba(255,79,163,0.5)]"
-        aria-label="Nova transação"
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </Link>
 
       {/* ── Bottom Sheet: Ações ─────────────────────────────────────────────── */}
       {showActions && selected && (
