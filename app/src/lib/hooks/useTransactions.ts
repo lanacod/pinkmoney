@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import type { InsertDTO, MonthlySummary, TransactionWithCategory } from '@/types/database'
+import type { InsertDTO, UpdateDTO, MonthlySummary, TransactionWithCategory } from '@/types/database'
 
 export function useTransactions(limit = 50) {
   const supabase = createClient()
@@ -60,6 +60,53 @@ export function useMonthlyTotals() {
         total_expenses: 0,
         balance: 0,
       }
+    },
+  })
+}
+
+export function useUpdateTransaction() {
+  const supabase = createClient()
+  const qc = useQueryClient()
+
+  return useMutation<any, Error, UpdateDTO<'transactions'> & { id: string }>({
+    mutationFn: async ({ id, ...dto }) => {
+      const { data, error } = await (supabase as any)
+        .from('transactions')
+        .update(dto)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['monthly-totals'] })
+      qc.invalidateQueries({ queryKey: ['category-spending'] })
+      qc.invalidateQueries({ queryKey: ['weekly-spending'] })
+    },
+  })
+}
+
+export function useDeleteTransaction() {
+  const supabase = createClient()
+  const qc = useQueryClient()
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error } = await (supabase as any)
+        .from('transactions')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['monthly-totals'] })
+      qc.invalidateQueries({ queryKey: ['category-spending'] })
+      qc.invalidateQueries({ queryKey: ['weekly-spending'] })
     },
   })
 }
