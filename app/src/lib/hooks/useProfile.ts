@@ -2,6 +2,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, UpdateDTO } from '@/types/database'
 
+// Recalcula o score financeiro via RPC e persiste no perfil
+export function useRefreshScore() {
+  const supabase = createClient()
+  const qc = useQueryClient()
+
+  return useMutation<number, Error, void>({
+    mutationFn: async (): Promise<number> => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Não autenticada')
+
+      const { data, error } = await (supabase as any)
+        .rpc('calculate_financial_score', { p_user_id: user.id })
+
+      if (error) throw error
+      return data as number
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
+  })
+}
+
 export function useProfile() {
   const supabase = createClient()
 

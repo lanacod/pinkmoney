@@ -3,16 +3,80 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
-import { Bell, Plus, Minus } from 'lucide-react'
+import { Bell, Plus, Minus, Star, X, Check } from 'lucide-react'
 import { GlassCard } from '@/components/pm/GlassCard'
 import { PmProgress } from '@/components/pm/PmProgress'
-import { useGoals, useUpdateGoal } from '@/lib/hooks/useGoals'
+import { useGoals, useCreateGoal, useUpdateGoal } from '@/lib/hooks/useGoals'
 import { formatBRL } from '@/lib/utils/format'
+
+const EMOJI_OPTIONS = ['✈️', '💄', '🏠', '💻', '🚗', '📚', '🎮', '💍', '🎯', '🌴', '💰', '🎓']
+
+interface GoalForm {
+  name: string
+  emoji: string
+  target_amount: string
+  monthly_contribution: string
+}
 
 export default function VaultPage() {
   const { data: goals = [], isLoading } = useGoals()
-  const { mutate: updateGoal }          = useUpdateGoal()
-  const [contribution, setContribution] = useState(500)
+  const { mutateAsync: createGoal }     = useCreateGoal()
+  const { mutateAsync: updateGoal }     = useUpdateGoal()
+
+  const [showForm, setShowForm]   = useState(false)
+  const [editId, setEditId]       = useState<string | null>(null)
+  const [saving, setSaving]       = useState(false)
+  const [form, setForm]           = useState<GoalForm>({
+    name: '', emoji: '🎯', target_amount: '', monthly_contribution: '',
+  })
+
+  // Contribuição do primeiro goal (ou 0)
+  const [localContrib, setLocalContrib] = useState<Record<string, number>>({})
+
+  function getContrib(g: { id: string; monthly_contribution: number }) {
+    return localContrib[g.id] ?? g.monthly_contribution
+  }
+
+  function openNew() {
+    setEditId(null)
+    setForm({ name: '', emoji: '🎯', target_amount: '', monthly_contribution: '' })
+    setShowForm(true)
+  }
+
+  async function handleSave() {
+    if (!form.name.trim() || !form.target_amount) return
+    setSaving(true)
+    try {
+      if (editId) {
+        await updateGoal({
+          id: editId,
+          name: form.name,
+          emoji: form.emoji,
+          target_amount: parseFloat(form.target_amount.replace(',', '.')),
+          monthly_contribution: form.monthly_contribution
+            ? parseFloat(form.monthly_contribution.replace(',', '.'))
+            : 0,
+        })
+      } else {
+        await createGoal({
+          name: form.name,
+          emoji: form.emoji,
+          target_amount: parseFloat(form.target_amount.replace(',', '.')),
+          monthly_contribution: form.monthly_contribution
+            ? parseFloat(form.monthly_contribution.replace(',', '.'))
+            : 0,
+        })
+      }
+      setShowForm(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveContrib(goalId: string, value: number) {
+    setLocalContrib(prev => ({ ...prev, [goalId]: value }))
+    await updateGoal({ id: goalId, monthly_contribution: value })
+  }
 
   return (
     <div className="pb-4 space-y-5">
@@ -33,23 +97,27 @@ export default function VaultPage() {
       {goals.length > 0 && (
         <div className="flex gap-4 overflow-x-auto px-5 pb-1">
           {goals.map(g => {
-            const pct = Math.round((g.current_amount / g.target_amount) * 100)
+            const pct = g.target_amount > 0
+              ? Math.round((g.current_amount / g.target_amount) * 100)
+              : 0
             return (
               <div key={g.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
                 <div className="relative w-16 h-16">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
                     <circle cx="32" cy="32" r="26" fill="none" stroke="var(--pm-surface-container-high)" strokeWidth="6" />
-                    <circle
-                      cx="32" cy="32" r="26"
-                      fill="none"
-                      stroke="#FF4FA3"
-                      strokeWidth="6"
-                      strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 26}`}
-                      strokeDashoffset={`${2 * Math.PI * 26 * (1 - pct / 100)}`}
-                      className="transition-all duration-500"
-                      style={{ filter: 'drop-shadow(0 0 4px rgba(255,79,163,0.6))' }}
-                    />
+                    {pct > 0 && (
+                      <circle
+                        cx="32" cy="32" r="26"
+                        fill="none"
+                        stroke="#FF4FA3"
+                        strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 26}`}
+                        strokeDashoffset={`${2 * Math.PI * 26 * (1 - pct / 100)}`}
+                        className="transition-all duration-500"
+                        style={{ filter: 'drop-shadow(0 0 4px rgba(255,79,163,0.6))' }}
+                      />
+                    )}
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-[11px] font-bold text-[var(--pm-on-surface)]">{pct}%</span>
@@ -68,7 +136,7 @@ export default function VaultPage() {
       <div className="px-5">
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2].map(i => (
               <div key={i} className="h-28 rounded-2xl bg-[var(--pm-surface-container-high)] animate-pulse" />
             ))}
           </div>
@@ -76,18 +144,23 @@ export default function VaultPage() {
           <GlassCard className="p-8 text-center space-y-3">
             <p className="text-4xl">🎯</p>
             <p className="text-sm font-semibold text-[var(--pm-on-surface)]">Nenhuma meta ainda</p>
-            <p className="text-xs text-[var(--pm-on-surface-variant)]">Crie sua primeira meta e comece a brilhar!</p>
+            <p className="text-xs text-[var(--pm-on-surface-variant)]">
+              Crie sua primeira meta e comece a brilhar!
+            </p>
           </GlassCard>
         ) : (
           <div className="space-y-3">
             {goals.map(g => {
-              const pct = Math.round((g.current_amount / g.target_amount) * 100)
+              const pct = g.target_amount > 0
+                ? Math.round((g.current_amount / g.target_amount) * 100)
+                : 0
+              const contrib = getContrib(g)
               return (
                 <GlassCard key={g.id} className="p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-[var(--pm-surface-container-high)] flex items-center justify-center text-xl">
-                        {g.emoji ?? '⭐'}
+                        {g.emoji ?? '🎯'}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -97,15 +170,44 @@ export default function VaultPage() {
                           </span>
                         </div>
                         <p className="text-xs text-[var(--pm-on-surface-variant)] mt-0.5">
-                          Próximo objetivo: manter o ritmo ✨
+                          {formatBRL(g.current_amount)} de {formatBRL(g.target_amount)}
                         </p>
                       </div>
                     </div>
                   </div>
+
                   <PmProgress value={pct} size="md" />
-                  <div className="flex items-center justify-between text-xs text-[var(--pm-on-surface-variant)]">
-                    <span className="pm-numeric">{formatBRL(g.current_amount)}</span>
-                    <span className="pm-numeric">de {formatBRL(g.target_amount)}</span>
+
+                  {/* Controle de contribuição mensal */}
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="flex-1">
+                      <p className="text-[9px] text-[var(--pm-on-surface-variant)] uppercase tracking-widest mb-1">
+                        Contribuição mensal
+                      </p>
+                      <p className="pm-numeric text-base font-bold text-[var(--pm-on-surface)]">
+                        {formatBRL(contrib)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const next = Math.max(0, contrib - 50)
+                          saveContrib(g.id, next)
+                        }}
+                        className="w-8 h-8 rounded-full pm-glass border border-[var(--pm-outline-variant)] flex items-center justify-center"
+                      >
+                        <Minus size={13} className="text-[var(--pm-on-surface)]" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          const next = contrib + 50
+                          saveContrib(g.id, next)
+                        }}
+                        className="w-8 h-8 rounded-full pm-btn-primary flex items-center justify-center"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
                   </div>
                 </GlassCard>
               )
@@ -114,49 +216,15 @@ export default function VaultPage() {
         )}
       </div>
 
-      {/* ── Contribuição Mensal ── */}
+      {/* ── Nova Meta ── */}
       <div className="px-5">
-        <GlassCard className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-[var(--pm-on-surface)] text-center">
-            Ajustar Contribuição Mensal
-          </p>
-          <div className="text-center">
-            <p className="pm-numeric text-3xl font-bold text-[var(--pm-on-surface)]">
-              {formatBRL(contribution)}
-            </p>
-            <p className="text-xs text-[var(--pm-on-surface-variant)] mt-1 uppercase tracking-widest">
-              Por Mês
-            </p>
-          </div>
-
-          {/* Slider visual */}
-          <div className="relative h-1.5 rounded-full bg-[var(--pm-surface-container-high)]">
-            <div
-              className="absolute inset-y-0 left-0 rounded-full pm-progress-fill transition-all"
-              style={{ width: `${Math.min(100, (contribution / 2000) * 100)}%` }}
-            />
-            <div
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[var(--pm-primary-container)] shadow-[0_0_8px_rgba(255,79,163,0.6)] transition-all"
-              style={{ left: `calc(${Math.min(100, (contribution / 2000) * 100)}% - 8px)` }}
-            />
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setContribution(c => Math.max(50, c - 50))}
-              className="w-12 h-12 rounded-full pm-glass border border-[var(--pm-outline-variant)] flex items-center justify-center"
-            >
-              <Minus size={18} className="text-[var(--pm-on-surface)]" />
-            </button>
-            <div className="flex-1" />
-            <button
-              onClick={() => setContribution(c => Math.min(5000, c + 50))}
-              className="w-12 h-12 rounded-full pm-btn-primary flex items-center justify-center"
-            >
-              <Plus size={18} />
-            </button>
-          </div>
-        </GlassCard>
+        <button
+          onClick={openNew}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-full pm-btn-primary font-bold text-sm"
+        >
+          <Plus size={18} />
+          Nova Meta
+        </button>
       </div>
 
       {/* ── Badges de Conquista ── */}
@@ -165,12 +233,16 @@ export default function VaultPage() {
           <p className="text-sm font-semibold text-[var(--pm-on-surface)] mb-4">✦ Badges de Conquista</p>
           <div className="flex gap-4 overflow-x-auto pb-1">
             {[
-              { icon: '⭐', label: 'Estrela\nEconomizadora' },
-              { icon: '🎯', label: 'Primeira\nMeta'         },
-              { icon: '💎', label: 'Mestre do\nBrilho'      },
+              { icon: '⭐', label: 'Estrela\nEconomizadora', earned: goals.length > 0 },
+              { icon: '🎯', label: 'Primeira\nMeta',         earned: goals.length > 0 },
+              { icon: '💎', label: 'Mestre do\nBrilho',      earned: goals.some(g => g.current_amount >= g.target_amount) },
             ].map(b => (
               <div key={b.label} className="flex flex-col items-center gap-2 flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-[var(--pm-surface-container-high)] flex items-center justify-center text-2xl border border-[var(--pm-outline-variant)]/60">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl border transition-all ${
+                  b.earned
+                    ? 'bg-[var(--pm-primary-container)]/20 border-[var(--pm-primary-container)]/40 shadow-[0_0_12px_rgba(255,79,163,0.2)]'
+                    : 'bg-[var(--pm-surface-container-high)] border-[var(--pm-outline-variant)]/40 opacity-40'
+                }`}>
                   {b.icon}
                 </div>
                 <p className="text-[10px] text-[var(--pm-on-surface-variant)] text-center whitespace-pre-line">
@@ -181,6 +253,99 @@ export default function VaultPage() {
           </div>
         </GlassCard>
       </div>
+
+      {/* ── Modal de Nova Meta ── */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)} />
+          <div className="relative w-full max-w-md mx-auto pm-glass rounded-t-3xl p-6 space-y-5 border-t border-[rgba(242,181,208,0.2)]">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-[var(--pm-outline-variant)]" />
+
+            <div className="flex items-center justify-between pt-2">
+              <h3 className="text-base font-bold text-[var(--pm-on-surface)]">
+                {editId ? 'Editar Meta' : 'Nova Meta'}
+              </h3>
+              <button onClick={() => setShowForm(false)}>
+                <X size={18} className="text-[var(--pm-on-surface-variant)]" />
+              </button>
+            </div>
+
+            {/* Emoji */}
+            <div>
+              <p className="text-xs font-semibold text-[var(--pm-on-surface-variant)] uppercase tracking-widest mb-2">Ícone</p>
+              <div className="flex flex-wrap gap-2">
+                {EMOJI_OPTIONS.map(em => (
+                  <button
+                    key={em}
+                    onClick={() => setForm(f => ({ ...f, emoji: em }))}
+                    className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                      form.emoji === em
+                        ? 'bg-[var(--pm-primary-container)] shadow-[0_0_12px_rgba(255,79,163,0.5)]'
+                        : 'bg-[var(--pm-surface-container-high)]'
+                    }`}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nome */}
+            <div>
+              <p className="text-xs font-semibold text-[var(--pm-on-surface-variant)] uppercase tracking-widest mb-2">Nome</p>
+              <input
+                type="text"
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Ex: Viagem para Tokyo, MacBook..."
+                className="w-full px-4 py-3 rounded-xl bg-[var(--pm-surface-container-high)] text-sm text-[var(--pm-on-surface)] placeholder:text-[var(--pm-outline)] outline-none border border-[var(--pm-outline-variant)]/50 focus:border-[var(--pm-primary)] transition-colors"
+              />
+            </div>
+
+            {/* Valor alvo + Contribuição */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs font-semibold text-[var(--pm-on-surface-variant)] uppercase tracking-widest mb-2">
+                  Meta (R$)
+                </p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={form.target_amount}
+                  onChange={e => setForm(f => ({ ...f, target_amount: e.target.value }))}
+                  placeholder="0,00"
+                  min="0"
+                  className="w-full px-4 py-3 rounded-xl bg-[var(--pm-surface-container-high)] text-sm text-[var(--pm-on-surface)] placeholder:text-[var(--pm-outline)] outline-none border border-[var(--pm-outline-variant)]/50 focus:border-[var(--pm-primary)] transition-colors"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-[var(--pm-on-surface-variant)] uppercase tracking-widest mb-2">
+                  Contrib./mês
+                </p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={form.monthly_contribution}
+                  onChange={e => setForm(f => ({ ...f, monthly_contribution: e.target.value }))}
+                  placeholder="0,00"
+                  min="0"
+                  className="w-full px-4 py-3 rounded-xl bg-[var(--pm-surface-container-high)] text-sm text-[var(--pm-on-surface)] placeholder:text-[var(--pm-outline)] outline-none border border-[var(--pm-outline-variant)]/50 focus:border-[var(--pm-primary)] transition-colors"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.name.trim() || !form.target_amount}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full pm-btn-primary font-bold text-sm disabled:opacity-50"
+            >
+              {saving ? 'Salvando...' : (
+                <><Check size={16} /> {editId ? 'Salvar Alterações' : 'Criar Meta'}</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   )

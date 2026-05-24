@@ -11,12 +11,14 @@ import { ArrowLeft, Sparkles, CreditCard, Wallet, Smartphone } from 'lucide-reac
 import { GlassCard } from '@/components/pm/GlassCard'
 import { useCreateTransaction } from '@/lib/hooks/useTransactions'
 import { useCategories } from '@/lib/hooks/useCategories'
+import { useCards } from '@/lib/hooks/useCards'
 import { createClient } from '@/lib/supabase/client'
 
 const schema = z.object({
   amount:         z.string().min(1),
   description:    z.string().min(1, 'Descrição obrigatória'),
   category_id:    z.string().optional(),
+  card_id:        z.string().optional(),
   date:           z.string().min(1),
   payment_method: z.enum(['card', 'pix', 'cash']),
   notes:          z.string().optional(),
@@ -35,6 +37,7 @@ export default function NovaTransacaoPage() {
   const [rawAmount, setRawAmount] = useState('')
 
   const { data: categories = [] }   = useCategories()
+  const { data: cards = [] }        = useCards()
   const { mutateAsync, isPending }  = useCreateTransaction()
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
@@ -47,6 +50,8 @@ export default function NovaTransacaoPage() {
 
   const selectedCategory = watch('category_id')
   const selectedPayment  = watch('payment_method')
+  const selectedCard     = watch('card_id')
+  const dateWatch        = watch('date')
 
   function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
     const digits = e.target.value.replace(/\D/g, '')
@@ -63,10 +68,18 @@ export default function NovaTransacaoPage() {
   function formatDateLabel(dateStr: string): string {
     const d = new Date(dateStr + 'T12:00:00')
     return new Intl.DateTimeFormat('pt-BR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
+      weekday: 'long', day: 'numeric', month: 'long',
     }).format(d)
+  }
+
+  // Quando muda para pagamento em cartão, pré-seleciona o primeiro
+  function handlePaymentChange(val: 'card' | 'pix' | 'cash') {
+    setValue('payment_method', val)
+    if (val !== 'card') {
+      setValue('card_id', undefined)
+    } else if (cards.length === 1) {
+      setValue('card_id', cards[0].id)
+    }
   }
 
   async function onSubmit(data: FormData) {
@@ -79,16 +92,15 @@ export default function NovaTransacaoPage() {
       type,
       amount:         parseFloat(data.amount),
       description:    data.description,
-      category_id:    data.category_id || null,
+      category_id:    data.category_id   || null,
+      card_id:        data.card_id       || null,
       date:           data.date,
       payment_method: data.payment_method,
-      notes:          data.notes || null,
+      notes:          data.notes         || null,
     })
 
     router.push('/dashboard')
   }
-
-  const dateWatch = watch('date')
 
   return (
     <div className="min-h-dvh pm-bg-gradient pb-10 max-w-md mx-auto">
@@ -117,9 +129,7 @@ export default function NovaTransacaoPage() {
               type="button"
               onClick={() => setType(t)}
               className={`flex-1 py-3 rounded-full text-sm font-bold transition-all ${
-                type === t
-                  ? 'pm-btn-primary'
-                  : 'text-[var(--pm-on-surface-variant)]'
+                type === t ? 'pm-btn-primary' : 'text-[var(--pm-on-surface-variant)]'
               }`}
             >
               {t === 'expense' ? 'Gasto' : 'Ganho'}
@@ -153,7 +163,9 @@ export default function NovaTransacaoPage() {
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => setValue('category_id', cat.id)}
+                  onClick={() =>
+                    setValue('category_id', selectedCategory === cat.id ? undefined : cat.id)
+                  }
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all ${
                     selectedCategory === cat.id
                       ? 'bg-[var(--pm-primary-container)] text-white shadow-[0_4px_12px_rgba(255,79,163,0.4)]'
@@ -196,13 +208,15 @@ export default function NovaTransacaoPage() {
                 {dateWatch ? formatDateLabel(dateWatch) : 'Hoje'}
               </span>
             </div>
-            <input
-              {...register('date')}
-              type="date"
-              className="absolute opacity-0 w-24 h-8 cursor-pointer"
-              style={{ colorScheme: 'dark' }}
-            />
-            <span className="text-[var(--pm-on-surface-variant)] text-sm">▾</span>
+            <div className="relative">
+              <input
+                {...register('date')}
+                type="date"
+                className="absolute opacity-0 w-24 h-8 cursor-pointer right-0"
+                style={{ colorScheme: 'dark' }}
+              />
+              <span className="text-[var(--pm-on-surface-variant)] text-sm pointer-events-none">▾</span>
+            </div>
           </div>
         </GlassCard>
 
@@ -216,7 +230,7 @@ export default function NovaTransacaoPage() {
               <button
                 key={value}
                 type="button"
-                onClick={() => setValue('payment_method', value)}
+                onClick={() => handlePaymentChange(value)}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                   selectedPayment === value
                     ? 'bg-[var(--pm-primary-container)] text-white shadow-[0_4px_12px_rgba(255,79,163,0.35)]'
@@ -229,6 +243,37 @@ export default function NovaTransacaoPage() {
             ))}
           </div>
         </div>
+
+        {/* ── Selecionar Cartão (se payment_method = card e tem cartões) ── */}
+        {selectedPayment === 'card' && cards.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.14em] text-[var(--pm-on-surface-variant)] uppercase mb-2 px-1">
+              Qual Cartão?
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {cards.map(card => (
+                <button
+                  key={card.id}
+                  type="button"
+                  onClick={() =>
+                    setValue('card_id', selectedCard === card.id ? undefined : card.id)
+                  }
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold transition-all ${
+                    selectedCard === card.id
+                      ? 'bg-[var(--pm-primary-container)] text-white'
+                      : 'bg-[var(--pm-surface-container-high)] text-[var(--pm-on-surface-variant)]'
+                  }`}
+                >
+                  <CreditCard size={12} />
+                  {card.name}
+                  {card.last_four && (
+                    <span className="opacity-70">···{card.last_four}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Notas ── */}
         <GlassCard className="p-4">
@@ -243,7 +288,7 @@ export default function NovaTransacaoPage() {
           />
         </GlassCard>
 
-        {/* ── Botão Salvar ── */}
+        {/* ── Salvar ── */}
         <button
           type="submit"
           disabled={isPending || !rawAmount}

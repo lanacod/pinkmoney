@@ -10,10 +10,10 @@ import { useProfile } from '@/lib/hooks/useProfile'
 import { useRecentTransactions, useMonthlyTotals } from '@/lib/hooks/useTransactions'
 import { useCategorySpending } from '@/lib/hooks/useCategories'
 import { useGoals } from '@/lib/hooks/useGoals'
+import { useWeeklySpending } from '@/lib/hooks/useAnalytics'
 import { formatBRL, formatDate } from '@/lib/utils/format'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, Tooltip, XAxis } from 'recharts'
 
-const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const PINK_SHADES = ['#FF4FA3', '#ff80bc', '#ffb0cc', '#e03590', '#b7046c']
 
 export default function DashboardPage() {
@@ -22,19 +22,22 @@ export default function DashboardPage() {
   const { data: recent = [] }   = useRecentTransactions(5)
   const { data: spending = [] } = useCategorySpending()
   const { data: goals = [] }    = useGoals()
+  const { data: weekly = [] }   = useWeeklySpending()
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Star'
-  const score     = profile?.financial_score ?? 750
+  const score     = profile?.financial_score ?? 0
 
-  const weeklyData = DAYS.map((day, i) => ({
-    day,
-    value: i === new Date().getDay()
-      ? (monthly?.total_expenses ?? 0) * 0.15
-      : Math.random() * 300 + 30,
+  const todayIdx = new Date().getDay()
+
+  // Dados reais da semana — sem Math.random()
+  const weeklyData = weekly.map(w => ({
+    day:    w.day,
+    value:  w.expense,
+    isToday: w.dayIndex === todayIdx,
   }))
 
   const donutData = spending.slice(0, 4).map(s => ({
-    name: s.category_name,
+    name:  s.category_name,
     value: Number(s.total_spent),
   }))
 
@@ -102,43 +105,55 @@ export default function DashboardPage() {
         <GlassCard className="p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-[var(--pm-on-surface)]">Gasto Semanal</h2>
-            <span className="text-[10px] text-emerald-400 font-semibold">+2% vs last week</span>
+            {weekly.length > 0 && (
+              <span className="text-[10px] text-[var(--pm-on-surface-variant)] font-medium">
+                Esta semana
+              </span>
+            )}
           </div>
-          <div className="h-28">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyData} barSize={16} barCategoryGap="30%">
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 10, fill: 'var(--pm-on-surface-variant)' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: 'var(--pm-surface-container)',
-                    border: 'none',
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                  formatter={(v) => [formatBRL(Number(v ?? 0)), 'Gasto']}
-                  cursor={false}
-                />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {weeklyData.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={i === new Date().getDay() ? '#FF4FA3' : 'rgba(255,79,163,0.22)'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+
+          {weeklyData.every(d => d.value === 0) ? (
+            <div className="h-28 flex flex-col items-center justify-center gap-2">
+              <p className="text-2xl">📊</p>
+              <p className="text-xs text-[var(--pm-on-surface-variant)]">Nenhum gasto registrado esta semana</p>
+            </div>
+          ) : (
+            <div className="h-28">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyData} barSize={16} barCategoryGap="30%">
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 10, fill: 'var(--pm-on-surface-variant)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--pm-surface-container)',
+                      border: 'none',
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                    formatter={(v) => [formatBRL(Number(v ?? 0)), 'Gasto']}
+                    cursor={false}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {weeklyData.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={d.isToday ? '#FF4FA3' : 'rgba(255,79,163,0.22)'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </GlassCard>
       </div>
 
       {/* ── Categorias ── */}
-      {donutData.length > 0 && (
+      {donutData.length > 0 ? (
         <div className="px-5">
           <GlassCard className="p-5">
             <h2 className="text-sm font-semibold text-[var(--pm-on-surface)] mb-3">Categorias</h2>
@@ -161,8 +176,8 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-[9px] font-bold text-[var(--pm-on-surface)] text-center leading-tight">
-                    65%<br/>
-                    <span className="text-[var(--pm-on-surface-variant)]">estilo</span>
+                    {spending.length}<br />
+                    <span className="text-[var(--pm-on-surface-variant)]">cats</span>
                   </span>
                 </div>
               </div>
@@ -187,10 +202,20 @@ export default function DashboardPage() {
             </div>
           </GlassCard>
         </div>
+      ) : (
+        <div className="px-5">
+          <GlassCard className="p-5 text-center space-y-2">
+            <p className="text-2xl">🏷️</p>
+            <p className="text-xs text-[var(--pm-on-surface-variant)]">Nenhum gasto por categoria ainda</p>
+            <Link href="/gerenciar-categorias" className="inline-block text-xs text-[var(--pm-primary)] font-semibold">
+              Criar categorias →
+            </Link>
+          </GlassCard>
+        </div>
       )}
 
       {/* ── Meta em destaque ── */}
-      {topGoal && (
+      {topGoal ? (
         <div className="px-5">
           <GlassCard className="p-5">
             <div className="flex items-center justify-between mb-3">
@@ -199,7 +224,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-8 h-8 rounded-xl bg-[var(--pm-surface-container-high)] flex items-center justify-center text-lg flex-shrink-0">
-                {topGoal.emoji ?? '✈️'}
+                {topGoal.emoji ?? '🎯'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[var(--pm-on-surface)] truncate">{topGoal.name}</p>
@@ -217,6 +242,16 @@ export default function DashboardPage() {
               className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-[var(--pm-outline-variant)] text-xs font-bold text-[var(--pm-primary)]"
             >
               Gerenciar Metas <ArrowRight size={12} />
+            </Link>
+          </GlassCard>
+        </div>
+      ) : (
+        <div className="px-5">
+          <GlassCard className="p-5 text-center space-y-2">
+            <p className="text-2xl">🎯</p>
+            <p className="text-xs text-[var(--pm-on-surface-variant)]">Nenhuma meta criada ainda</p>
+            <Link href="/vault" className="inline-block text-xs text-[var(--pm-primary)] font-semibold">
+              Criar primeira meta →
             </Link>
           </GlassCard>
         </div>
@@ -266,7 +301,9 @@ export default function DashboardPage() {
                   ? 'Seu score financeiro está excelente! Continue assim para conquistar o badge Mestre do Brilho 💎'
                   : score >= 700
                   ? 'Você está indo bem! Reduza gastos em uma categoria para aumentar seu score ⭐'
-                  : 'Registre suas transações diariamente para entender seus padrões e melhorar seu score 🌸'}
+                  : score > 0
+                  ? 'Registre suas transações diariamente para entender seus padrões e melhorar seu score 🌸'
+                  : 'Comece registrando suas transações para construir seu score financeiro ✨'}
               </p>
             </div>
           </div>
